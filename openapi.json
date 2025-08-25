@@ -1,0 +1,192 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Genius API (Lyrics & Metadata)",
+    "description": "A step-by-step API documentation for authenticating with OAuth2 and retrieving song details (lyrics metadata) from Genius.\n\n## OAuth Setup\n1. **Sign Up & Register App**\n   - Go to https://genius.com and sign up.\n   - Visit the Genius API clients page.\n   - Click “New API Client”.\n   - Provide app name and website.\n   - Save your **Client ID** and **Client Secret**.\n\n2. **Prepare OAuth**\n   - Store client credentials securely.\n   - Choose a redirect URI (e.g., `http://localhost:3000/auth/callback`).\n\n3. **Authorize User**\n   - Redirect user to:  \n     ```\n     https://api.genius.com/oauth/authorize\n       ?client_id=YOUR_CLIENT_ID\n       &redirect_uri=YOUR_REDIRECT_URI\n       &response_type=code\n       &scope=me\n     ```\n   - User logs in and approves.\n   - Genius redirects back with a `code`.\n\n4. **Exchange Code for Token**\n   - Make a `POST` request to `/oauth/token` with:\n     - `client_id`\n     - `client_secret`\n     - `redirect_uri`\n     - `code`\n     - `grant_type=authorization_code`\n\n5. **Use Access Token**\n   - Pass `Authorization: Bearer <access_token>` in all requests.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.genius.com"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "OAuth2 authorization and token exchange"
+    },
+    {
+      "name": "Search",
+      "description": "Search for songs, artists, or lyrics"
+    }
+  ],
+  "paths": {
+    "/oauth/authorize": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Redirect user for OAuth authorization",
+        "description": "Redirects the user to the Genius login/authorization page.",
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uri" }
+          },
+          {
+            "name": "response_type",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["code"] }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirects user to Genius authorization page."
+          }
+        }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Exchange authorization code for access token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "client_id": { "type": "string" },
+                  "client_secret": { "type": "string" },
+                  "redirect_uri": { "type": "string", "format": "uri" },
+                  "code": { "type": "string" },
+                  "grant_type": {
+                    "type": "string",
+                    "enum": ["authorization_code"]
+                  }
+                },
+                "required": ["client_id", "client_secret", "redirect_uri", "code", "grant_type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful token exchange",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": { "type": "string", "example": "abc123xyz456" },
+                    "token_type": { "type": "string", "example": "bearer" },
+                    "expires_in": { "type": "integer", "example": 3600 },
+                    "refresh_token": { "type": "string", "example": "r1x23yZ9" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Search songs, artists, or lyrics",
+        "description": "Search across Genius for songs, artists, or lyrics.",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Search term (e.g., \"Kendrick Lamar\")"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of matching songs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "integer", "example": 200 }
+                      }
+                    },
+                    "response": {
+                      "type": "object",
+                      "properties": {
+                        "hits": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "index": { "type": "string", "example": "song" },
+                              "type": { "type": "string", "example": "song" },
+                              "result": {
+                                "type": "object",
+                                "properties": {
+                                  "id": { "type": "integer", "example": 10359264 },
+                                  "title": { "type": "string", "example": "Not Like Us" },
+                                  "full_title": { "type": "string", "example": "Not Like Us by Kendrick Lamar" },
+                                  "artist_names": { "type": "string", "example": "Kendrick Lamar" },
+                                  "url": { "type": "string", "format": "uri", "example": "https://genius.com/Kendrick-lamar-not-like-us-lyrics" },
+                                  "header_image_url": { "type": "string", "format": "uri", "example": "https://images.genius.com/...1000x1000x1.png" },
+                                  "song_art_image_url": { "type": "string", "format": "uri", "example": "https://images.genius.com/...1000x1000x1.png" },
+                                  "release_date_for_display": { "type": "string", "example": "May 4, 2024" },
+                                  "primary_artist": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": { "type": "integer", "example": 1421 },
+                                      "name": { "type": "string", "example": "Kendrick Lamar" },
+                                      "url": { "type": "string", "format": "uri", "example": "https://genius.com/artists/Kendrick-lamar" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
